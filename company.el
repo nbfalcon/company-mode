@@ -2151,6 +2151,9 @@ With ARG, move by that many elements."
 (defun company--event-col-row (event)
   (company--posn-col-row (event-start event)))
 
+(defvar company-mouse-event nil)
+(defvar company-mouse-move-success nil)
+
 (defun company-select-mouse (event)
   "Select the candidate picked by the mouse."
   (interactive "e")
@@ -2160,22 +2163,26 @@ With ARG, move by that many elements."
                          (min (overlay-get company-pseudo-tooltip-overlay
                                            'company-height)
                               company-candidates-length))))
-    (if (and ovl-height
-             (company--inside-tooltip-p event-col-row ovl-row ovl-height))
-        (progn
-          (company-set-selection (+ (cdr event-col-row)
-                                    (1- company-tooltip-offset)
-                                    (if (and (eq company-tooltip-offset-display 'lines)
-                                             (not (zerop company-tooltip-offset)))
-                                        -1 0)
-                                    (- ovl-row)
-                                    (if (< ovl-height 0)
-                                        (- 1 ovl-height)
-                                      0)))
-          t)
-      (company-abort)
-      (company--unread-this-command-keys)
-      nil)))
+    (cond ((and ovl-height
+                (company--inside-tooltip-p event-col-row ovl-row ovl-height))
+           (company-set-selection (+ (cdr event-col-row)
+                                     (1- company-tooltip-offset)
+                                     (if (and (eq company-tooltip-offset-display 'lines)
+                                              (not (zerop company-tooltip-offset)))
+                                         -1 0)
+                                     (- ovl-row)
+                                     (if (< ovl-height 0)
+                                         (- 1 ovl-height)
+                                       0)))
+           t)
+          ((let ((company-mouse-event event)
+                 company-mouse-move-success)
+             (company-call-frontends 'select-mouse)
+             company-mouse-move-success))
+          (t
+           (company-abort)
+           (company--unread-this-command-keys)
+           nil))))
 
 (defun company-complete-mouse (event)
   "Insert the candidate picked by the mouse."
